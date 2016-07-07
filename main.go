@@ -11,6 +11,7 @@ func main() {
 
 	pingUpdates := make(chan *PingResponse)
 	pinger := NewPinger(pingUpdates)
+	pinger.StartLoop()
 
 	deMux := make(chan interface{})
 
@@ -34,6 +35,6 @@ func main() {
 		}
 
 	}()
-
 	g.Loop(deMux)
+
 }

@@ -22,8 +22,11 @@ func NewPinger(channel chan *PingResponse) *Pinger {
 	fp := fastping.NewPinger()
 
 	fp.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
-		panic("Svar paa ping")
 		channel <- &PingResponse{Rtt: rtt, Ip: addr}
+	}
+
+	fp.OnIdle = func() {
+		go fp.Run()
 	}
 
 	return &Pinger{
@@ -34,13 +37,12 @@ func NewPinger(channel chan *PingResponse) *Pinger {
 }
 
 func (p *Pinger) StartLoop() {
-	p.pinger.RunLoop()
+	go p.pinger.Run()
 }
 
 func (p *Pinger) Add(addr string) {
 	// I'm guessing this should have some locking on it
 	if _, found := p.pingerIps[addr]; !found {
-
 		p.pinger.AddIP(addr)
 		p.pingerIps[addr] = true
 	}

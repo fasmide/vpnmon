@@ -11,15 +11,20 @@ import (
 
 func main() {
 	p := fastping.NewPinger()
-	p.AddIP("10.8.88.10")
-	p.AddIP("10.8.88.6")
+
 	p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
 		fmt.Printf("IP Addr: %s receive, RTT: %v\n", addr.String(), rtt)
 	}
 	p.OnIdle = func() {
 		fmt.Println("finish")
+		go p.Run()
 	}
-	p.RunLoop()
+	go p.Run()
+
+	time.Sleep(time.Second)
+	fmt.Printf("Der addes...")
+	p.AddIP("10.8.88.10")
+	p.AddIP("10.8.88.6")
 
 	var wg sync.WaitGroup
 	wg.Add(1)

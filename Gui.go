@@ -51,6 +51,11 @@ func (g *GUI) acceptEvents(events chan interface{}) {
 			termui.SendCustomEvt("/vpnupdate", event)
 			continue
 		}
+
+		if pingUpdate, ok := e.(PingResponse); ok {
+			termui.SendCustomEvt("/pingupdate", event)
+			continue
+		}
 		panic(fmt.Sprintf("I do not understand %T types", e))
 
 	}
@@ -74,6 +79,10 @@ func (g *GUI) Loop(events chan interface{}) {
 		}
 		g.clientList.Items = clients
 		termui.Render(termui.Body)
+	})
+
+	termui.Handle("/pingupdate", func(e termui.Event) {
+
 	})
 
 	termui.Handle("/sys/wnd/resize", func(e termui.Event) {
