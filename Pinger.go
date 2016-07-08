@@ -15,14 +15,14 @@ type PingResponse struct {
 type Pinger struct {
 	pinger    *fastping.Pinger
 	pingerIps map[string]bool
-	results   chan *PingResponse
+	results   chan PingResponse
 }
 
-func NewPinger(channel chan *PingResponse) *Pinger {
+func NewPinger(channel chan PingResponse) *Pinger {
 	fp := fastping.NewPinger()
 
 	fp.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
-		channel <- &PingResponse{Rtt: rtt, Ip: addr}
+		channel <- PingResponse{Rtt: rtt, Ip: addr}
 	}
 
 	fp.OnIdle = func() {

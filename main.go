@@ -9,13 +9,13 @@ func main() {
 	vpnUpdates := make(chan Status)
 	go m.UpdateLoop(vpnUpdates)
 
-	pingUpdates := make(chan *PingResponse)
+	pingUpdates := make(chan PingResponse)
 	pinger := NewPinger(pingUpdates)
 	pinger.StartLoop()
 
 	deMux := make(chan interface{})
 
-	g := GUI{}
+	g := NewGUI()
 
 	go func() {
 

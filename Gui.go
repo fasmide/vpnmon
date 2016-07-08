@@ -2,19 +2,21 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gizak/termui"
 )
 
 type GUI struct {
+	lastStatus Status
+	lastPing   map[string]time.Duration
 
-	// not sure what goes in here
 	clientList *termui.List
 }
 
 func NewGUI() *GUI {
 
-	return &GUI{}
+	return &GUI{lastPing: make(map[string]time.Duration)}
 }
 
 func (g *GUI) Init() {
@@ -32,7 +34,15 @@ func (g *GUI) Init() {
 	clientList.ItemFgColor = termui.ColorYellow
 	clientList.Height = termui.TermHeight()
 	clientList.Border = true
-	clientList.BorderLabel = fmt.Sprintf("[%13s] %-19s %15s %10s %10s", "Common Name", "Real Address", "Virtual Address", "BytesIn", "BytesOut")
+	clientList.BorderLabel = fmt.Sprintf(
+		"[%13s] %-19s %15s %10s %10s %15s",
+		"Common Name",
+		"Real Address",
+		"Virtual Address",
+		"BytesIn",
+		"BytesOut",
+		"Ping",
+	)
 
 	g.clientList = clientList
 
@@ -53,7 +63,7 @@ func (g *GUI) acceptEvents(events chan interface{}) {
 		}
 
 		if pingUpdate, ok := e.(PingResponse); ok {
-			termui.SendCustomEvt("/pingupdate", event)
+			termui.SendCustomEvt("/pingupdate", pingUpdate)
 			continue
 		}
 		panic(fmt.Sprintf("I do not understand %T types", e))
@@ -72,17 +82,18 @@ func (g *GUI) Loop(events chan interface{}) {
 	})
 
 	termui.Handle("/vpnupdate", func(e termui.Event) {
-		clients := make([]string, 0, 5)
-		for _, client := range e.Data.(Status).ClientList {
 
-			clients = append(clients, renderClientLine(client))
-		}
-		g.clientList.Items = clients
+		g.lastStatus = e.Data.(Status)
+		g.renderClientLines()
 		termui.Render(termui.Body)
 	})
 
 	termui.Handle("/pingupdate", func(e termui.Event) {
+		event := e.Data.(PingResponse)
 
+		g.lastPing[event.Ip.String()] = event.Rtt
+		g.renderClientLines()
+		termui.Render(termui.Body)
 	})
 
 	termui.Handle("/sys/wnd/resize", func(e termui.Event) {
@@ -99,12 +110,28 @@ func (g *GUI) Loop(events chan interface{}) {
 	termui.Loop()
 }
 
-func renderClientLine(client *Client) string {
-	return fmt.Sprintf("[%13s] %19s %15s %10d %10d",
+func (g *GUI) renderClientLine(client *Client) string {
+	ping := "N/A"
+	if rtt, ok := g.lastPing[client.VirtualAddress]; ok {
+		ping = rtt.String()
+	}
+
+	return fmt.Sprintf("[%13s] %19s %15s %10d %10d %15s",
 		client.CommonName,
 		client.RealAddress,
 		client.VirtualAddress,
 		client.BytesReceived,
 		client.BytesSent,
+		ping,
 	)
+}
+func (g *GUI) renderClientLines() {
+	clientStrings := make([]string, 0, 5)
+	for _, client := range g.lastStatus.ClientList {
+
+		clientStrings = append(clientStrings, g.renderClientLine(client))
+	}
+
+	g.clientList.Items = clientStrings
+
 }
