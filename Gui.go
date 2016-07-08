@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/gizak/termui"
 )
 
 type GUI struct {
-	lastStatus Status
-	lastPing   map[string]time.Duration
+	lastStatus     Status
+	lastPing       map[string]time.Duration
+	clientKeyOrder []string
 
 	clientList *termui.List
 }
@@ -84,6 +86,17 @@ func (g *GUI) Loop(events chan interface{}) {
 	termui.Handle("/vpnupdate", func(e termui.Event) {
 
 		g.lastStatus = e.Data.(Status)
+
+		// apply some sorting
+		mk := make([]string, len(g.lastStatus.ClientList))
+		i := 0
+		for k, _ := range g.lastStatus.ClientList {
+			mk[i] = k
+			i++
+		}
+		sort.Strings(mk)
+		g.clientKeyOrder = mk
+
 		g.renderClientLines()
 		termui.Render(termui.Body)
 	})
@@ -127,9 +140,9 @@ func (g *GUI) renderClientLine(client *Client) string {
 }
 func (g *GUI) renderClientLines() {
 	clientStrings := make([]string, 0, 5)
-	for _, client := range g.lastStatus.ClientList {
+	for _, clientKey := range g.clientKeyOrder {
 
-		clientStrings = append(clientStrings, g.renderClientLine(client))
+		clientStrings = append(clientStrings, g.renderClientLine(g.lastStatus.ClientList[clientKey]))
 	}
 
 	g.clientList.Items = clientStrings
