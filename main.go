@@ -1,21 +1,26 @@
 package main
 
+import (
+	"github.com/fasmide/vpnmon/gui"
+	"github.com/fasmide/vpnmon/vpn"
+)
+
 func main() {
 
-	m, err := NewManagement()
+	m, err := vpn.NewManagement()
 	if err != nil {
 		panic(err)
 	}
-	vpnUpdates := make(chan Status)
+	vpnUpdates := make(chan vpn.Status)
 	go m.UpdateLoop(vpnUpdates)
 
-	pingUpdates := make(chan PingResponse)
-	pinger := NewPinger(pingUpdates)
+	pingUpdates := make(chan vpn.PingResponse)
+	pinger := vpn.NewPinger(pingUpdates)
 	pinger.StartLoop()
 
 	deMux := make(chan interface{})
 
-	g := NewGUI()
+	g := gui.NewGUI()
 
 	go func() {
 

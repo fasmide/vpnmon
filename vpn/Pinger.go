@@ -1,4 +1,4 @@
-package main
+package vpn
 
 import (
 	"net"
@@ -37,7 +37,13 @@ func NewPinger(channel chan PingResponse) *Pinger {
 }
 
 func (p *Pinger) StartLoop() {
-	go p.pinger.Run()
+	go func() {
+		err := p.pinger.Run()
+		if err != nil {
+			panic(err)
+		}
+
+	}()
 }
 
 func (p *Pinger) Add(addr string) {

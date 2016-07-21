@@ -1,15 +1,16 @@
-package main
+package gui
 
 import (
 	"fmt"
 	"sort"
 	"time"
 
+	"github.com/fasmide/vpnmon/vpn"
 	"github.com/gizak/termui"
 )
 
 type GUI struct {
-	lastStatus     Status
+	lastStatus     vpn.Status
 	lastPing       map[string]time.Duration
 	clientKeyOrder []string
 
@@ -37,19 +38,41 @@ func (g *GUI) Init() {
 	clientList.Height = termui.TermHeight()
 	clientList.Border = true
 	clientList.BorderLabel = fmt.Sprintf(
-		"[%13s] %-19s %15s %10s %10s %15s",
+		"[%13s] %-19s %15s %10s %10s %20s %16s",
 		"Common Name",
 		"Real Address",
 		"Virtual Address",
 		"BytesIn",
 		"BytesOut",
+		"Since",
 		"Ping",
 	)
 
 	g.clientList = clientList
 
+	// traffic widget
+	lc2 := termui.NewLineChart()
+	lc2.BorderLabel = "Traffic"
+	// lc2.Data =
+	lc2.Height = 10
+	lc2.X = 0
+	lc2.Y = 12
+	lc2.AxesColor = termui.ColorWhite
+	lc2.LineColor = termui.ColorCyan | termui.AttrBold
+
+	// Generic info
+	p := termui.NewPar(":PRESS q TO QUIT DEMO")
+	p.Height = 10
+	p.TextFgColor = termui.ColorWhite
+	p.BorderLabel = "Open Vpn"
+	p.BorderFg = termui.ColorCyan
+
 	// build
 	termui.Body.AddRows(
+		termui.NewRow(
+			termui.NewCol(6, 0, p),
+			termui.NewCol(6, 0, lc2),
+		),
 		termui.NewRow(
 			termui.NewCol(12, 0, clientList),
 		),
@@ -59,12 +82,12 @@ func (g *GUI) Init() {
 
 func (g *GUI) acceptEvents(events chan interface{}) {
 	for e := range events {
-		if event, ok := e.(Status); ok {
+		if event, ok := e.(vpn.Status); ok {
 			termui.SendCustomEvt("/vpnupdate", event)
 			continue
 		}
 
-		if pingUpdate, ok := e.(PingResponse); ok {
+		if pingUpdate, ok := e.(vpn.PingResponse); ok {
 			termui.SendCustomEvt("/pingupdate", pingUpdate)
 			continue
 		}
@@ -85,7 +108,7 @@ func (g *GUI) Loop(events chan interface{}) {
 
 	termui.Handle("/vpnupdate", func(e termui.Event) {
 
-		g.lastStatus = e.Data.(Status)
+		g.lastStatus = e.Data.(vpn.Status)
 
 		// apply some sorting
 		mk := make([]string, len(g.lastStatus.ClientList))
@@ -102,7 +125,7 @@ func (g *GUI) Loop(events chan interface{}) {
 	})
 
 	termui.Handle("/pingupdate", func(e termui.Event) {
-		event := e.Data.(PingResponse)
+		event := e.Data.(vpn.PingResponse)
 
 		g.lastPing[event.Ip.String()] = event.Rtt
 		g.renderClientLines()
@@ -123,18 +146,18 @@ func (g *GUI) Loop(events chan interface{}) {
 	termui.Loop()
 }
 
-func (g *GUI) renderClientLine(client *Client) string {
+func (g *GUI) renderClientLine(client *vpn.Client) string {
 	ping := "N/A"
 	if rtt, ok := g.lastPing[client.VirtualAddress]; ok {
 		ping = rtt.String()
 	}
-
-	return fmt.Sprintf("[%13s] %19s %15s %10d %10d %15s",
+	return fmt.Sprintf("[%13s] %19s %15s %10d %10d %20s %16s",
 		client.CommonName,
 		client.RealAddress,
 		client.VirtualAddress,
 		client.BytesReceived,
 		client.BytesSent,
+		time.Now().Sub(client.ConnectedSince),
 		ping,
 	)
 }
